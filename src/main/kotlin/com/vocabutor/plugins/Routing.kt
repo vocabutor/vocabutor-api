@@ -13,13 +13,17 @@ import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+val logger: Logger = LoggerFactory.getLogger("Routing")
 
 fun Application.configureRouting(redirects: MutableMap<String, String>,
                                  httpClient: HttpClient = applicationHttpClient) {
 
     routing {
         get("/") {
-            call.respondText("Hello World!")
+            call.respondText("Vocabulator API running!")
         }
         authenticate("auth-oauth-google") {
             get("/login") {
@@ -44,8 +48,13 @@ fun Application.configureRouting(redirects: MutableMap<String, String>,
         get("/{path}") {
             val userSession: UserSession? = getSession(call)
             if (userSession != null) {
-                val userInfo: UserInfo = getPersonalGreeting(httpClient, userSession)
-                call.respondText("Hello, ${userInfo.name}!")
+                val userInfo: UserInfo? = getPersonalGreeting(httpClient, userSession)
+                if (userInfo == null) {
+                    logger.debug("could not fetch user info. redirecting to login")
+                    call.respondRedirect("/login")
+                } else {
+                    call.respondText("Hello, ${userInfo.name}!")
+                }
             }
         }
     }
@@ -79,11 +88,22 @@ data class UserInfo(
 //    val locale: String
 )
 
-private suspend fun getPersonalGreeting(
-    httpClient: HttpClient,
-    userSession: UserSession
-): UserInfo = httpClient.get("https://www.googleapis.com/oauth2/v2/userinfo") {
-    headers {
-        append(HttpHeaders.Authorization, "Bearer ${userSession.token}")
+private suspend fun getPersonalGreeting(httpClient: HttpClient, userSession: UserSession): UserInfo? {
+    if (userSession.token.isBlank()) return null
+    val httpResponse = httpClient.get("https://www.googleapis.com/oauth2/v2/userinfo") {
+        headers {
+            append(HttpHeaders.Authorization, "Bearer ${userSession.token}")
+        }
     }
-}.body()
+    when (httpResponse.status) {
+        HttpStatusCode.OK -> return httpResponse.body()
+        HttpStatusCode.Unauthorized -> {
+            logger.debug("got unauthorized response")
+            return null
+        }
+        else -> {
+            logger.error("failed to get user info from Google Oauth endpoint: ${httpResponse}")
+            return null
+        }
+    }
+}
