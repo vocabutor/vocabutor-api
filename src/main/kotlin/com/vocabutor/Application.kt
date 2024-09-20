@@ -19,6 +19,7 @@ val applicationHttpClient = HttpClient(CIO) {
 
 fun Application.module(httpClient: HttpClient = applicationHttpClient) {
     val redirects = mutableMapOf<String, String>()
+    configureSerialization()
     configureAuth(redirects, httpClient)
     configureRouting(redirects, httpClient)
 }

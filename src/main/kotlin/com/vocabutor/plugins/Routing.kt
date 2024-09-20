@@ -1,10 +1,13 @@
 package com.vocabutor.plugins
 
 import com.vocabutor.applicationHttpClient
+import com.vocabutor.entity.User
+import com.vocabutor.repository.UserRepository
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import java.sql.Connection
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
@@ -13,6 +16,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import org.jetbrains.exposed.sql.Database
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -20,11 +24,25 @@ val logger: Logger = LoggerFactory.getLogger("Routing")
 
 fun Application.configureRouting(redirects: MutableMap<String, String>,
                                  httpClient: HttpClient = applicationHttpClient) {
+    val database = Database.connect(
+        url = environment.config.property("postgres.url").getString(),
+        user = environment.config.property("postgres.user").getString(),
+        driver = "org.postgresql.Driver",
+        password = environment.config.property("postgres.pass").getString(),
+    )
+    val userRepository = UserRepository(database)
 
     routing {
         get("/") {
             call.respondText("Vocabulator API running!")
         }
+
+        post("/signup") {
+            val user = call.receive<User>()
+            val userId = userRepository.insert(user)
+            call.respond(HttpStatusCode.Created, userId)
+        }
+
         authenticate("auth-oauth-google") {
             get("/login") {
                 // Redirects to 'authorizeUrl' automatically
