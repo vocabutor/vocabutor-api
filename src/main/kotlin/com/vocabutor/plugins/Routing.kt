@@ -3,13 +3,15 @@ package com.vocabutor.plugins
 import com.vocabutor.applicationHttpClient
 import com.vocabutor.entity.User
 import com.vocabutor.repository.UserRepository
+import com.vocabutor.security.JWTConfig
+import com.vocabutor.security.createToken
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import java.sql.Connection
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -19,10 +21,12 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.Database
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.time.Clock
 
 val logger: Logger = LoggerFactory.getLogger("Routing")
 
 fun Application.configureRouting(redirects: MutableMap<String, String>,
+                                 jwtConfig: JWTConfig, clock: Clock,
                                  httpClient: HttpClient = applicationHttpClient) {
     val database = Database.connect(
         url = environment.config.property("postgres.url").getString(),
@@ -43,58 +47,57 @@ fun Application.configureRouting(redirects: MutableMap<String, String>,
             call.respond(HttpStatusCode.Created, userId)
         }
 
+        get("/home") {
+            val principal = call.principal<JWTPrincipal>() ?: run {
+                call.respondText("Not logged in")
+                return@get
+            }
+            call.respondText("Hello, ${principal}!")
+        }
+
+        authenticate(jwtConfig.name) {
+            get("/me") {
+                val principal = call.principal<JWTPrincipal>() ?: run {
+                    call.respond(HttpStatusCode.Forbidden, "Not logged in")
+                    return@get
+                }
+                val accessToken = principal.getClaim(
+                    "google_access_token",
+                    String::class) ?: run {
+                    call.respond(HttpStatusCode.Forbidden, "No access token")
+                    return@get
+                }
+                val userInfo = getUserInfo(accessToken, httpClient)
+                call.respondText("Hi, ${userInfo.name}!")
+            }
+        }
+
         authenticate("auth-oauth-google") {
             get("/login") {
                 // Redirects to 'authorizeUrl' automatically
             }
             get("/callback") {
-                val currentPrincipal: OAuthAccessTokenResponse.OAuth2? = call.principal()
-                // redirects home if the url is not found before authorization
-                currentPrincipal?.let { principal ->
-                    principal.state?.let { state ->
-                        call.sessions.set(UserSession(state, principal.accessToken))
-                        redirects[state]?.let { redirect ->
-                            call.respondRedirect(redirect)
-                            return@get
-                        }
-                    }
-                }
-                call.respondRedirect("/home")
-            }
-        }
-
-        get("/{path}") {
-            val userSession: UserSession? = getSession(call)
-            if (userSession != null) {
-                val userInfo: UserInfo? = getPersonalGreeting(httpClient, userSession)
-                if (userInfo == null) {
-                    logger.debug("could not fetch user info. redirecting to login")
-                    call.respondRedirect("/login")
-                } else {
-                    call.respondText("Hello, ${userInfo.name}!")
+                (call.principal() as OAuthAccessTokenResponse.OAuth2?)?.let {
+                        principal ->
+                    val accessToken = principal.accessToken
+                    val jwtToken = jwtConfig.createToken(clock, accessToken, 3600)
+                    call.respondText(jwtToken, contentType = ContentType.Text.Plain)
                 }
             }
         }
     }
 }
 
-private suspend fun getSession(
-    call: ApplicationCall
-): UserSession? {
-    val userSession: UserSession? = call.sessions.get()
-    //if there is no session, redirect to login
-    if (userSession == null) {
-        val redirectUrl = URLBuilder("http://0.0.0.0:8080/login").run {
-            parameters.append("redirectUrl", call.request.uri)
-            build()
+private suspend fun getUserInfo(
+    accessToken: String,
+    httpClient: HttpClient):
+        UserInfo =
+    httpClient.get("https://www.googleapis.com/oauth2/v1/userinfo") {
+        headers {
+            append("Authorization", "Bearer $accessToken")
         }
-        call.respondRedirect(redirectUrl)
-        return null
-    }
-    return userSession
-}
+    }.body()
 
-data class UserSession(val state: String, val token: String)
 
 @Serializable
 data class UserInfo(
@@ -105,23 +108,3 @@ data class UserInfo(
     val picture: String,
 //    val locale: String
 )
-
-private suspend fun getPersonalGreeting(httpClient: HttpClient, userSession: UserSession): UserInfo? {
-    if (userSession.token.isBlank()) return null
-    val httpResponse = httpClient.get("https://www.googleapis.com/oauth2/v2/userinfo") {
-        headers {
-            append(HttpHeaders.Authorization, "Bearer ${userSession.token}")
-        }
-    }
-    when (httpResponse.status) {
-        HttpStatusCode.OK -> return httpResponse.body()
-        HttpStatusCode.Unauthorized -> {
-            logger.debug("got unauthorized response")
-            return null
-        }
-        else -> {
-            logger.error("failed to get user info from Google Oauth endpoint: ${httpResponse}")
-            return null
-        }
-    }
-}
