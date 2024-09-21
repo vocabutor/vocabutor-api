@@ -5,6 +5,15 @@ ktor:
     deployment:
         port: 8080
 
+    auth:
+        jwt:
+            name: vocabutor-jwt
+            realm: myrealm
+            secret: mysecret
+            audience: myaud
+            issuer: vocabutor
+            expirationSeconds: 3600
+
 postgres:
     url: $POSTGRES_URL
     user: $POSTGRES_USER
