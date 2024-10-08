@@ -1,6 +1,7 @@
 package com.vocabutor.plugins
 
 import com.vocabutor.applicationHttpClient
+import com.vocabutor.dto.UserDto
 import com.vocabutor.entity.User
 import com.vocabutor.repository.UserRepository
 import com.vocabutor.security.JWTConfig
@@ -15,7 +16,6 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.sessions.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.Database
@@ -25,8 +25,7 @@ import java.time.Clock
 
 val logger: Logger = LoggerFactory.getLogger("Routing")
 
-fun Application.configureRouting(redirects: MutableMap<String, String>,
-                                 jwtConfig: JWTConfig, clock: Clock,
+fun Application.configureRouting(jwtConfig: JWTConfig, clock: Clock,
                                  httpClient: HttpClient = applicationHttpClient) {
     val database = Database.connect(
         url = environment.config.property("postgres.url").getString(),
@@ -38,21 +37,18 @@ fun Application.configureRouting(redirects: MutableMap<String, String>,
 
     routing {
         get("/") {
-            call.respondText("Vocabulator API running!")
+            call.respondText("Vocabutor API running!")
         }
 
         post("/signup") {
-            val user = call.receive<User>()
-            val userId = userRepository.insert(user)
+            val dto = call.receive<UserDto>()
+            val entity = User(
+                name = dto.name,
+                email = dto.email,
+                username = dto.username,
+                dateOfBirth = dto.dateOfBirth)
+            val userId = userRepository.insert(entity, entity.username)
             call.respond(HttpStatusCode.Created, userId)
-        }
-
-        get("/home") {
-            val principal = call.principal<JWTPrincipal>() ?: run {
-                call.respondText("Not logged in")
-                return@get
-            }
-            call.respondText("Hello, ${principal}!")
         }
 
         authenticate(jwtConfig.name) {

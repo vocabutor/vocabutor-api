@@ -31,7 +31,6 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
     implementation("io.ktor:ktor-server-auth-jvm")
-    implementation("io.ktor:ktor-server-sessions")
     implementation("io.ktor:ktor-client-core")
     implementation("io.ktor:ktor-client-cio")
     implementation("io.ktor:ktor-client-content-negotiation")
@@ -40,6 +39,7 @@ dependencies {
     implementation("org.postgresql:postgresql:$postgres_version")
     implementation("org.jetbrains.exposed:exposed-core:$exposed_version")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposed_version")
+    implementation("org.jetbrains.exposed:exposed-java-time:$exposed_version")
     testImplementation("io.ktor:ktor-server-test-host-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }

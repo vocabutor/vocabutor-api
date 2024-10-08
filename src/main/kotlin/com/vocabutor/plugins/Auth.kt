@@ -10,7 +10,8 @@ import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
 
-fun Application.configureAuth(redirects: MutableMap<String, String>, httpClient: HttpClient, jwtConfig: JWTConfig) {
+fun Application.configureAuth(httpClient: HttpClient, jwtConfig: JWTConfig) {
+    val redirects = mutableMapOf<String, String>()
     install(Authentication) {
         jwt(jwtConfig.name) {
             realm = jwtConfig.realm

@@ -19,9 +19,8 @@ val applicationHttpClient = HttpClient(CIO) {
 }
 
 fun Application.module(httpClient: HttpClient = applicationHttpClient) {
-    val redirects = mutableMapOf<String, String>()
     configureSerialization()
     val jwtConfig = environment.config.config("ktor.auth.jwt").jwtConfig()
-    configureAuth(redirects, httpClient, jwtConfig)
-    configureRouting(redirects, jwtConfig, Clock.systemUTC(), httpClient)
+    configureAuth(httpClient, jwtConfig)
+    configureRouting(jwtConfig, Clock.systemUTC(), httpClient)
 }
