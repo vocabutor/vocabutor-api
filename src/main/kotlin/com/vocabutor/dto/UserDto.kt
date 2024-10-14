@@ -10,6 +10,6 @@ data class UserDto(
     val name: String,
     val email: String,
     val username: String,
-    @Serializable(with = InstantSerializer::class) val dateOfBirth: Instant,
+    @Serializable(with = InstantSerializer::class) val dateOfBirth: Instant?,
     val audit: AuditDto? = null,
 )
