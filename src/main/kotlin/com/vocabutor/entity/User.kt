@@ -10,6 +10,6 @@ data class User(
     val name: String,
     val email: String,
     val username: String,
-    @Serializable(with = InstantSerializer::class) val dateOfBirth: Instant,
+    @Serializable(with = InstantSerializer::class) val dateOfBirth: Instant? = null,
     val audit: Audit? = null,
 )
