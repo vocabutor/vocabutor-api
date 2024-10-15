@@ -13,10 +13,16 @@ data class JWTConfig(
     val expirationSeconds: Long
 )
 
-fun JWTConfig.createToken(clock: Clock, accessToken: String, expirationSeconds: Long): String =
+fun JWTConfig.createToken(clock: Clock,
+                          accessToken: String,
+                          expirationSeconds: Long,
+                          username: String,
+                          roles :List<String>? = listOf()): String =
     JWT.create()
         .withAudience(this.audience)
         .withIssuer(this.issuer)
         .withClaim("google_access_token", accessToken)
+        .withClaim("username", username)
+        .withClaim("roles", roles)
         .withExpiresAt(clock.instant().plusSeconds(expirationSeconds))
         .sign(Algorithm.HMAC256(this.secret))
