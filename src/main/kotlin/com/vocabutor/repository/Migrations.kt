@@ -10,6 +10,7 @@ class Migrations(database: Database) {
         transaction(database) {
             SchemaUtils.create(Users)
             SchemaUtils.create(UserGoogleAuthRepository.UserGoogleAuthTable)
+            SchemaUtils.create(LanguageRepository.LanguageTable)
         }
     }
 }

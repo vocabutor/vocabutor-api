@@ -1,5 +1,6 @@
 package com.vocabutor.entity
 
+import com.vocabutor.dto.AuditDto
 import com.vocabutor.util.InstantSerializer
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -13,3 +14,7 @@ data class Audit(
     val createdBy: String,
     val updatedBy: String,
 )
+
+fun Audit.toDto(): AuditDto {
+    return AuditDto(createdAt, updatedAt, createdBy, updatedBy)
+}
