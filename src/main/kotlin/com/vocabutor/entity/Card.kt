@@ -6,6 +6,7 @@ data class Card(
     val phrase: String,
     val answer: String,
     val status: CardStatus,
+    val deckId: Long?,
     val audit: Audit
 )
 
