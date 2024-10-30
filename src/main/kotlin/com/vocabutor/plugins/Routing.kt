@@ -2,8 +2,10 @@ package com.vocabutor.plugins
 
 import com.vocabutor.applicationHttpClient
 import com.vocabutor.repository.*
+import com.vocabutor.routes.cardRoutes
 import com.vocabutor.routes.languageRoutes
 import com.vocabutor.security.JWTConfig
+import com.vocabutor.service.CardService
 import com.vocabutor.service.GoogleAuthService
 import com.vocabutor.service.LanguageService
 import io.ktor.client.*
@@ -27,16 +29,16 @@ fun Application.configureRouting(
 
     val googleAuthService = GoogleAuthService(userRepository, userGoogleAuthRepository, httpClient, jwtConfig, clock)
     val languageService = LanguageService(LanguageRepository())
+    val cardService = CardService(CardRepository())
 
     routing {
         get("/") {
             call.respondText("Vocabutor API running!")
         }
-
         authenticate(jwtConfig.name) {
             languageRoutes(languageService)
+            cardRoutes(cardService)
         }
-
         authenticate("auth-oauth-google") {
             get("/login") {
                 // Redirects to 'authorizeUrl' automatically
