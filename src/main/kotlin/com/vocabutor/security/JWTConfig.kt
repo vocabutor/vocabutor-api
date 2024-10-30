@@ -2,6 +2,7 @@ package com.vocabutor.security
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.vocabutor.entity.User
 import java.time.Clock
 
 data class JWTConfig(
@@ -16,13 +17,14 @@ data class JWTConfig(
 fun JWTConfig.createToken(clock: Clock,
                           accessToken: String,
                           expirationSeconds: Long,
-                          username: String,
+                          user: User,
                           roles :List<String>? = listOf()): String =
     JWT.create()
         .withAudience(this.audience)
         .withIssuer(this.issuer)
         .withClaim("google_access_token", accessToken)
-        .withClaim("username", username)
+        .withClaim("username", user.username)
         .withClaim("roles", roles)
+        .withClaim("userId", user.id!!)
         .withExpiresAt(clock.instant().plusSeconds(expirationSeconds))
         .sign(Algorithm.HMAC256(this.secret))

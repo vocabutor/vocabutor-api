@@ -28,42 +28,60 @@ class GoogleAuthService(
         val googleAccessToken = principal.accessToken
         val expirationInstant = Instant.now().plusSeconds(Math.abs(principal.expiresIn - 30))
         val userInfo = getUserInfo(googleAccessToken, httpClient)
+        var user = createOrFetchUserWithGoogleAuthInfo(userInfo, googleAccessToken, expirationInstant)
+        return jwtConfig.createToken(clock, googleAccessToken, 3600, user)
+    }
 
-        var username = ""
-
+    private suspend fun createOrFetchUserWithGoogleAuthInfo(
+        userInfo: UserInfo,
+        googleAccessToken: String,
+        expirationInstant: Instant
+    ): User {
         val existingUserGoogleAuth = userGoogleAuthRepository.findByGoogleId(userInfo.id)
         if (existingUserGoogleAuth != null) {
-            val existingUser = userRepository.findById(existingUserGoogleAuth.userId)
-                ?: throw IllegalStateException(
-                    "user not found for google auth record with id ${existingUserGoogleAuth.userId}"
-                )
-            userGoogleAuthRepository.updateAccessTokenForGoogleId(
-                existingUserGoogleAuth.googleId, googleAccessToken, expirationInstant, existingUser.username
-            )
-            username = existingUser.username
-        } else {
-            dbTransaction {
-                val user = userRepository.findByEmail(userInfo.email) ?: userRepository.findById(
-                    userRepository.insert(
-                        User(name = userInfo.name, email = userInfo.email, username = extractUsername(userInfo.email)),
-                        "system:googleCallback"
-                    )
-                ) ?: throw IllegalStateException("failed to fetch or create user for google user id ${userInfo.id}")
-
-                val userGoogleAuth = UserGoogleAuth(
-                    userId = user.id!!, // fetch from the database - should be non-null
-                    googleId = userInfo.id,
-                    name = userInfo.name,
-                    givenName = userInfo.givenName,
-                    familyName = userInfo.familyName,
-                    accessToken = googleAccessToken,
-                    accessTokenExpiresAt = expirationInstant
-                )
-                userGoogleAuthRepository.insert(userGoogleAuth, user.username)
-                username = user.username
-            }
+            return manageExistingUser(existingUserGoogleAuth, googleAccessToken, expirationInstant)
         }
-        return jwtConfig.createToken(clock, googleAccessToken, 3600, username)
+        return createUser(userInfo, googleAccessToken, expirationInstant)
+    }
+
+    private suspend fun createUser(
+        userInfo: UserInfo,
+        googleAccessToken: String,
+        expirationInstant: Instant
+    ) = dbTransaction {
+        val user = userRepository.findByEmail(userInfo.email) ?: userRepository.findById(
+            userRepository.insert(
+                User(name = userInfo.name, email = userInfo.email, username = extractUsername(userInfo.email)),
+                "system:googleCallback"
+            )
+        ) ?: throw IllegalStateException("failed to fetch or create user for google user id ${userInfo.id}")
+
+        val userGoogleAuth = UserGoogleAuth(
+            userId = user.id!!, // fetch from the database - should be non-null
+            googleId = userInfo.id,
+            name = userInfo.name,
+            givenName = userInfo.givenName,
+            familyName = userInfo.familyName,
+            accessToken = googleAccessToken,
+            accessTokenExpiresAt = expirationInstant
+        )
+        userGoogleAuthRepository.insert(userGoogleAuth, user.username)
+        user
+    }
+
+    private suspend fun manageExistingUser(
+        existingUserGoogleAuth: UserGoogleAuth,
+        googleAccessToken: String,
+        expirationInstant: Instant
+    ): User {
+        val existingUser = userRepository.findById(existingUserGoogleAuth.userId)
+            ?: throw IllegalStateException(
+                "user not found for google auth record with id ${existingUserGoogleAuth.userId}"
+            )
+        userGoogleAuthRepository.updateAccessTokenForGoogleId(
+            existingUserGoogleAuth.googleId, googleAccessToken, expirationInstant, existingUser.username
+        )
+        return existingUser
     }
 
     private suspend fun getUserInfo(

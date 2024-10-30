@@ -11,6 +11,7 @@ class Migrations(database: Database) {
             SchemaUtils.create(Users)
             SchemaUtils.create(UserGoogleAuthRepository.UserGoogleAuthTable)
             SchemaUtils.create(LanguageRepository.LanguageTable)
+            SchemaUtils.create(CardRepository.CardTable)
         }
     }
 }

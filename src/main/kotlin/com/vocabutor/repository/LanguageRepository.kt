@@ -5,7 +5,6 @@ import com.vocabutor.dto.request.UpdateLanguageRequest
 import com.vocabutor.entity.Audit
 import com.vocabutor.entity.Language
 import com.vocabutor.entity.LanguageStatus
-import com.vocabutor.repository.UserRepository.Users
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.javatime.timestamp
 import java.time.Clock
@@ -27,7 +26,7 @@ class LanguageRepository {
         val createdBy = varchar("created_by", length = 50)
         val updatedBy = varchar("updated_by", length = 50)
 
-        override val primaryKey = PrimaryKey(Users.id)
+        override val primaryKey = PrimaryKey(id)
     }
 
     suspend fun insert(req: AddLanguageRequest, currentUserName: String): Long = dbTransaction {
