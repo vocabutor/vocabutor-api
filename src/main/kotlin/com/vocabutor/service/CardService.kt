@@ -12,7 +12,7 @@ import com.vocabutor.repository.CardRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
-class CardService(val cardRepository: CardRepository) {
+class CardService(private val cardRepository: CardRepository) {
 
     suspend fun create(req: AddCardRequest, userId: Long, currentUsername: String): CardDto {
         //TODO: add revision

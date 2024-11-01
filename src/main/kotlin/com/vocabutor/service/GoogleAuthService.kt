@@ -16,15 +16,14 @@ import java.time.Clock
 import java.time.Instant
 
 class GoogleAuthService(
-    val userRepository: UserRepository,
-    val userGoogleAuthRepository: UserGoogleAuthRepository,
-    val httpClient: HttpClient,
-    val jwtConfig: JWTConfig,
-    val clock: Clock
+    private val userRepository: UserRepository,
+    private val userGoogleAuthRepository: UserGoogleAuthRepository,
+    private val httpClient: HttpClient,
+    private val jwtConfig: JWTConfig,
+    private val clock: Clock
 ) {
 
     suspend fun handleGoogleAuthCallback(principal: OAuthAccessTokenResponse.OAuth2): String {
-
         val googleAccessToken = principal.accessToken
         val expirationInstant = Instant.now().plusSeconds(Math.abs(principal.expiresIn - 30))
         val userInfo = getUserInfo(googleAccessToken, httpClient)
