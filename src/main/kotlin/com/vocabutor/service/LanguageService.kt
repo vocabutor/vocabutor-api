@@ -10,7 +10,7 @@ import com.vocabutor.exception.InternalServerError
 import com.vocabutor.exception.NotFoundError
 import com.vocabutor.repository.LanguageRepository
 
-class LanguageService(val languageRepository: LanguageRepository) {
+class LanguageService(private val languageRepository: LanguageRepository) {
 
     suspend fun insert(req: AddLanguageRequest, currentUsername: String): LanguageDto {
         val languageId = languageRepository.insert(req, currentUsername)
