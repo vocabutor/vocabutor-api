@@ -13,6 +13,7 @@ class Migrations(database: Database) {
             SchemaUtils.create(LanguageRepository.LanguageTable)
             SchemaUtils.create(CardRepository.CardTable)
             SchemaUtils.create(DeckRepository.DeckTable)
+            SchemaUtils.create(CardDeckRelRepository.CardDeckRelTable)
         }
     }
 }
