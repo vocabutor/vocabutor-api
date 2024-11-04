@@ -3,6 +3,7 @@ package com.vocabutor.repository
 import com.vocabutor.dto.request.AddDeckRequest
 import com.vocabutor.dto.request.UpdateDeckRequest
 import com.vocabutor.entity.*
+import com.vocabutor.repository.CardRepository.CardTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.javatime.timestamp
 import java.time.Clock
@@ -13,13 +14,9 @@ class DeckRepository {
 
     object DeckTable : Table("app_deck") {
         val id = varchar("id", length = 100)
-        val userId = long("user_id")
-            .references(UserRepository.Users.id)
-        val languageId = long("language_id")
-            .references(LanguageRepository.LanguageTable.id)
-        val answerLanguageId = long("answer_language_id")
-            .references(LanguageRepository.LanguageTable.id)
-            .nullable()
+        val userId = long("user_id").references(UserRepository.Users.id)
+        val languageId = long("language_id").references(LanguageRepository.LanguageTable.id)
+        val answerLanguageId = long("answer_language_id").references(LanguageRepository.LanguageTable.id).nullable()
         val title = varchar("title", length = 500)
         val status = varchar("status", length = 50)
         val createdAt = timestamp("created_at")
@@ -48,9 +45,28 @@ class DeckRepository {
         }
 
     suspend fun findById(id: String): Deck? = dbTransaction {
-        DeckTable.selectAll().where{ DeckTable.id eq id and (DeckTable.status eq DeckStatus.ACTIVE.name) }
-            .map { rowMapper(it) }
-            .singleOrNull()
+        DeckTable.selectAll().where { DeckTable.id eq id and (DeckTable.status eq DeckStatus.ACTIVE.name) }
+            .map { rowMapper(it) }.singleOrNull()
+    }
+
+    suspend fun findByIdWithCards(id: String): Deck? = dbTransaction {
+        DeckTable.join(
+                CardDeckRelRepository.CardDeckRelTable,
+                JoinType.LEFT,
+                DeckTable.id,
+                CardDeckRelRepository.CardDeckRelTable.deckId
+            ).join(
+                CardTable, JoinType.LEFT, CardDeckRelRepository.CardDeckRelTable.cardId, CardTable.id,
+                additionalConstraint = { CardTable.status eq CardStatus.ACTIVE.name }
+            ).selectAll()
+            .where { DeckTable.id eq id and (DeckTable.status eq DeckStatus.ACTIVE.name) }
+            .map {
+                val deck = rowMapper(it)
+                val card = if (it[CardTable.id] != null) cardRowMapper(it) else null
+                deck to card
+            }.groupBy({ it.first }, { it.second }).map { (deck, cards) ->
+                deck.copy(cards = cards.filterNotNull())
+            }.singleOrNull()
     }
 
     suspend fun update(id: String, req: UpdateDeckRequest, currentUsername: String) = dbTransaction {
@@ -73,19 +89,16 @@ class DeckRepository {
         dbTransaction {
             DeckTable.selectAll().where {
                 (DeckTable.userId eq userId) and ((DeckTable.title ilike '%' + search + '%')) and (DeckTable.status eq DeckStatus.ACTIVE.name)
-            }
-                .limit(limit, offset = offset)
-                .map {
+            }.limit(limit, offset = offset).map {
                     rowMapper(it)
                 }
         }
 
-    suspend fun countByUserIdAndSearchQuery(userId: Long, search: String): Long =
-        dbTransaction {
-            DeckTable.selectAll().where {
-                (DeckTable.userId eq userId) and ((DeckTable.title ilike '%' + search + '%')) and (DeckTable.status eq DeckStatus.ACTIVE.name)
-            }.count()
-        }
+    suspend fun countByUserIdAndSearchQuery(userId: Long, search: String): Long = dbTransaction {
+        DeckTable.selectAll().where {
+            (DeckTable.userId eq userId) and ((DeckTable.title ilike '%' + search + '%')) and (DeckTable.status eq DeckStatus.ACTIVE.name)
+        }.count()
+    }
 
     private fun rowMapper(it: ResultRow) = Deck(
         it[DeckTable.id],
@@ -95,10 +108,7 @@ class DeckRepository {
         it[DeckTable.languageId],
         it[DeckTable.answerLanguageId],
         Audit(
-            it[DeckTable.createdAt],
-            it[DeckTable.updatedAt],
-            it[DeckTable.createdBy],
-            it[DeckTable.updatedBy]
+            it[DeckTable.createdAt], it[DeckTable.updatedAt], it[DeckTable.createdBy], it[DeckTable.updatedBy]
         )
     )
 

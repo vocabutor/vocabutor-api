@@ -11,5 +11,6 @@ data class DeckDto(
     val status: DeckStatus,
     val languageId: Long,
     val answerLanguageId: Long? = null,
-    val audit: AuditDto
+    val audit: AuditDto,
+    val cards: List<CardDto> = emptyList()
 )

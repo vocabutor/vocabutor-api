@@ -31,6 +31,12 @@ class DeckService(
             ?.toDto()
             ?: throw NotFoundError("deck with id $id not found")
 
+    suspend fun getByIdWithCardsOrNotFound(id: String, userId: Long): DeckDto =
+        deckRepository.findByIdWithCards(id)
+            ?.takeIf { it.userId == userId }
+            ?.toDto()
+            ?: throw NotFoundError("deck with id $id not found")
+
     suspend fun pageAll(userId: Long, search: String, page: Int, size: Int): PageDto<DeckDto> =
         coroutineScope {
             val offset = page.toLong() * size
