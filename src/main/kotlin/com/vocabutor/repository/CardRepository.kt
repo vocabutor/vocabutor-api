@@ -5,6 +5,7 @@ import com.vocabutor.dto.request.UpdateCardRequest
 import com.vocabutor.entity.Audit
 import com.vocabutor.entity.Card
 import com.vocabutor.entity.CardStatus
+import com.vocabutor.repository.CardRepository.CardTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.javatime.timestamp
 import java.time.Clock
@@ -49,7 +50,7 @@ class CardRepository {
     
     suspend fun findById(id: String): Card? = dbTransaction { 
         CardTable.selectAll().where{ CardTable.id eq id and (CardTable.status eq CardStatus.ACTIVE.name) }
-            .map { rowMapper(it) }
+            .map { cardRowMapper(it) }
             .singleOrNull()
     }
     
@@ -77,7 +78,7 @@ class CardRepository {
                 }
                 .limit(limit, offset = offset)
                 .map {
-                    rowMapper(it)
+                    cardRowMapper(it)
                 }
         }
 
@@ -88,20 +89,19 @@ class CardRepository {
             }.count()
         }
 
-    private fun rowMapper(it: ResultRow) = Card(
-        it[CardTable.id],
-        it[CardTable.userId],
-        it[CardTable.languageId],
-        it[CardTable.phrase],
-        it[CardTable.answer],
-        CardStatus.valueOf(it[CardTable.status]),
-        Audit(
-            it[CardTable.createdAt],
-            it[CardTable.updatedAt],
-            it[CardTable.createdBy],
-            it[CardTable.updatedBy]
-        )
-    )
-
 }
 
+fun cardRowMapper(it: ResultRow) = Card(
+    it[CardTable.id],
+    it[CardTable.userId],
+    it[CardTable.languageId],
+    it[CardTable.phrase],
+    it[CardTable.answer],
+    CardStatus.valueOf(it[CardTable.status]),
+    Audit(
+        it[CardTable.createdAt],
+        it[CardTable.updatedAt],
+        it[CardTable.createdBy],
+        it[CardTable.updatedBy]
+    )
+)

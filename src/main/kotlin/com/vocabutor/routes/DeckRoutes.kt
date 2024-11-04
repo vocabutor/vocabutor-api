@@ -41,6 +41,19 @@ fun Route.deckRoutes(deckService: DeckService) {
             call.respond(deckService.getByIdOrNotFound(id, userId))
         }
 
+        get("/{id}/with-cards") {
+            val id = call.parameters["id"]
+            if (id == null) {
+                call.respond(HttpStatusCode.BadRequest)
+                return@get
+            }
+            val userId = call.principal<JWTPrincipal>()?.userId() ?: run {
+                call.respond(HttpStatusCode.Unauthorized, "No access token")
+                return@get
+            }
+            call.respond(deckService.getByIdWithCardsOrNotFound(id, userId))
+        }
+
         put("/{deckId}/cards/{cardId}") {
             val deckId = call.parameters["deckId"]
             if (deckId == null) {
