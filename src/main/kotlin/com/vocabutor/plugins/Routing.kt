@@ -28,11 +28,14 @@ fun Application.configureRouting(
 ) {
     val userRepository = UserRepository()
     val userGoogleAuthRepository = UserGoogleAuthRepository()
+    val deckRepository = DeckRepository()
+    val cardRepository = CardRepository()
+    val cardDeckRelRepository = CardDeckRelRepository()
 
     val googleAuthService = GoogleAuthService(userRepository, userGoogleAuthRepository, httpClient, jwtConfig, clock)
     val languageService = LanguageService(LanguageRepository())
-    val cardService = CardService(CardRepository())
-    val deckService = DeckService(DeckRepository())
+    val cardService = CardService(cardRepository)
+    val deckService = DeckService(deckRepository, cardRepository, cardDeckRelRepository)
 
     routing {
         get("/") {

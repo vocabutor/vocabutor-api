@@ -8,11 +8,16 @@ import com.vocabutor.entity.DeckStatus
 import com.vocabutor.entity.toDto
 import com.vocabutor.exception.InternalServerError
 import com.vocabutor.exception.NotFoundError
+import com.vocabutor.repository.CardDeckRelRepository
+import com.vocabutor.repository.CardRepository
 import com.vocabutor.repository.DeckRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
-class DeckService(private val deckRepository: DeckRepository) {
+class DeckService(
+    private val deckRepository: DeckRepository,
+    private val cardRepository: CardRepository,
+    private val cardDeckRelRepository: CardDeckRelRepository) {
 
     suspend fun create(req: AddDeckRequest, userId: Long, currentUsername: String): DeckDto {
         val deckId = deckRepository.insert(req, userId, DeckStatus.ACTIVE, currentUsername)
@@ -57,6 +62,22 @@ class DeckService(private val deckRepository: DeckRepository) {
     suspend fun updateStatus(id: String, status: DeckStatus, currentUsername: String, userId: Long) {
         getByIdOrNotFound(id, userId)
         deckRepository.updateStatus(id, status, currentUsername)
+    }
+
+    suspend fun addCardToDeck(userId: Long, currentUsername: String, cardId: String, deckId: String) {
+        cardRepository.findById(cardId)?.takeIf { it.userId == userId }
+            ?: throw NotFoundError("card $cardId not found for user $userId")
+        deckRepository.findById(deckId)?.takeIf { it.userId == userId }
+            ?: throw NotFoundError("deck $deckId not found for user $userId")
+        cardDeckRelRepository.upsert(cardId, deckId, currentUsername)
+    }
+
+    suspend fun removeCardFromDeck(userId: Long, cardId: String, deckId: String) {
+        cardRepository.findById(cardId)?.takeIf { it.userId == userId }
+            ?: throw NotFoundError("card $cardId not found for user $userId")
+        deckRepository.findById(deckId)?.takeIf { it.userId == userId }
+            ?: throw NotFoundError("deck $deckId not found for user $userId")
+        cardDeckRelRepository.delete(cardId, deckId)
     }
 
 }
