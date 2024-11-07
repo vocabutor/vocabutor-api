@@ -14,6 +14,8 @@ class Migrations(database: Database) {
             SchemaUtils.create(CardRepository.CardTable)
             SchemaUtils.create(DeckRepository.DeckTable)
             SchemaUtils.create(CardDeckRelRepository.CardDeckRelTable)
+            SchemaUtils.create(QuestionSetRepository.QuestionSetTable)
+            SchemaUtils.create(QuestionRepository.QuestionTable)
         }
     }
 }
