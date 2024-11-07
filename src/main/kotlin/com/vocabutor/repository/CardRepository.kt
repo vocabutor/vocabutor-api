@@ -16,10 +16,8 @@ class CardRepository {
 
     object CardTable : Table("app_card") {
         val id = varchar("id", length = 100)
-        val userId = long("user_id")
-            .references(UserRepository.Users.id)
-        val languageId = long("language_id")
-            .references(LanguageRepository.LanguageTable.id)
+        val userId = long("user_id").references(UserRepository.Users.id)
+        val languageId = long("language_id").references(LanguageRepository.LanguageTable.id)
         val phrase = varchar("phrase", length = 500)
         val answer = varchar("answer", length = 500)
         val status = varchar("status", length = 50)
@@ -47,13 +45,12 @@ class CardRepository {
                 it[updatedBy] = currentUsername
             }[CardTable.id]
         }
-    
-    suspend fun findById(id: String): Card? = dbTransaction { 
-        CardTable.selectAll().where{ CardTable.id eq id and (CardTable.status eq CardStatus.ACTIVE.name) }
-            .map { cardRowMapper(it) }
-            .singleOrNull()
+
+    suspend fun findById(id: String): Card? = dbTransaction {
+        CardTable.selectAll().where { CardTable.id eq id and (CardTable.status eq CardStatus.ACTIVE.name) }
+            .map { cardRowMapper(it) }.singleOrNull()
     }
-    
+
     suspend fun update(id: String, req: UpdateCardRequest, currentUsername: String) = dbTransaction {
         CardTable.update({ CardTable.id eq id }) {
             it[phrase] = req.phrase
@@ -74,20 +71,29 @@ class CardRepository {
     suspend fun pageByUserIdAndSearchQuery(userId: Long, offset: Long, limit: Int, search: String): List<Card> =
         dbTransaction {
             CardTable.selectAll().where {
-                    (CardTable.userId eq userId) and ((CardTable.phrase ilike '%' + search + '%') or (CardTable.answer ilike '%' + search + '%')) and (CardTable.status eq CardStatus.ACTIVE.name)
-                }
-                .limit(limit, offset = offset)
-                .map {
+                (CardTable.userId eq userId) and ((CardTable.phrase ilike '%' + search + '%') or (CardTable.answer ilike '%' + search + '%')) and (CardTable.status eq CardStatus.ACTIVE.name)
+            }.limit(limit, offset = offset).map {
                     cardRowMapper(it)
                 }
         }
 
-    suspend fun countByUserIdAndSearchQuery(userId: Long, search: String): Long =
-        dbTransaction {
-            CardTable.selectAll().where {
-                (CardTable.userId eq userId) and ((CardTable.phrase ilike '%' + search + '%') or (CardTable.answer ilike '%' + search + '%')) and (CardTable.status eq CardStatus.ACTIVE.name)
-            }.count()
-        }
+    suspend fun countByUserIdAndSearchQuery(userId: Long, search: String): Long = dbTransaction {
+        CardTable.selectAll().where {
+            (CardTable.userId eq userId) and ((CardTable.phrase ilike '%' + search + '%') or (CardTable.answer ilike '%' + search + '%')) and (CardTable.status eq CardStatus.ACTIVE.name)
+        }.count()
+    }
+
+    suspend fun countByUserIdAndLanguageId(userId: Long, languageId: Long): Long = dbTransaction {
+        CardTable.selectAll().where {
+            (CardTable.userId eq userId) and (CardTable.languageId eq languageId) and (CardTable.status eq CardStatus.ACTIVE.name)
+        }.count()
+    }
+
+    suspend fun findByUserIdAndLanguageId(userId: Long, languageId: Long): List<Card> = dbTransaction {
+        CardTable.selectAll().where {
+            (CardTable.userId eq userId) and (CardTable.languageId eq languageId) and (CardTable.status eq CardStatus.ACTIVE.name)
+        }.map { cardRowMapper(it) }
+    }
 
 }
 
@@ -99,9 +105,6 @@ fun cardRowMapper(it: ResultRow) = Card(
     it[CardTable.answer],
     CardStatus.valueOf(it[CardTable.status]),
     Audit(
-        it[CardTable.createdAt],
-        it[CardTable.updatedAt],
-        it[CardTable.createdBy],
-        it[CardTable.updatedBy]
+        it[CardTable.createdAt], it[CardTable.updatedAt], it[CardTable.createdBy], it[CardTable.updatedBy]
     )
 )

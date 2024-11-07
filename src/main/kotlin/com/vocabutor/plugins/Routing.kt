@@ -5,11 +5,9 @@ import com.vocabutor.repository.*
 import com.vocabutor.routes.cardRoutes
 import com.vocabutor.routes.deckRoutes
 import com.vocabutor.routes.languageRoutes
+import com.vocabutor.routes.questionSetRoutes
 import com.vocabutor.security.JWTConfig
-import com.vocabutor.service.CardService
-import com.vocabutor.service.DeckService
-import com.vocabutor.service.GoogleAuthService
-import com.vocabutor.service.LanguageService
+import com.vocabutor.service.*
 import io.ktor.client.*
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -31,11 +29,14 @@ fun Application.configureRouting(
     val deckRepository = DeckRepository()
     val cardRepository = CardRepository()
     val cardDeckRelRepository = CardDeckRelRepository()
+    val questionSetRepository = QuestionSetRepository()
+    val questionRepository = QuestionRepository()
 
     val googleAuthService = GoogleAuthService(userRepository, userGoogleAuthRepository, httpClient, jwtConfig, clock)
     val languageService = LanguageService(LanguageRepository())
     val cardService = CardService(cardRepository)
     val deckService = DeckService(deckRepository, cardRepository, cardDeckRelRepository)
+    val questionSetService = QuestionSetService(questionSetRepository, questionRepository, cardRepository)
 
     routing {
         get("/") {
@@ -45,6 +46,7 @@ fun Application.configureRouting(
             languageRoutes(languageService)
             cardRoutes(cardService)
             deckRoutes(deckService)
+            questionSetRoutes(questionSetService)
         }
         authenticate("auth-oauth-google") {
             get("/login") {
