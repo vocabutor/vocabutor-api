@@ -12,6 +12,7 @@ class Migrations(database: Database) {
             SchemaUtils.create(UserGoogleAuthRepository.UserGoogleAuthTable)
             SchemaUtils.create(LanguageRepository.LanguageTable)
             SchemaUtils.create(CardRepository.CardTable)
+            SchemaUtils.create(CardRepository.CardRevisionTable)
             SchemaUtils.create(DeckRepository.DeckTable)
             SchemaUtils.create(CardDeckRelRepository.CardDeckRelTable)
             SchemaUtils.create(QuestionSetRepository.QuestionSetTable)
