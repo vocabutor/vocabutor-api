@@ -2,10 +2,7 @@ package com.vocabutor.plugins
 
 import com.vocabutor.applicationHttpClient
 import com.vocabutor.repository.*
-import com.vocabutor.routes.cardRoutes
-import com.vocabutor.routes.deckRoutes
-import com.vocabutor.routes.languageRoutes
-import com.vocabutor.routes.questionSetRoutes
+import com.vocabutor.routes.*
 import com.vocabutor.security.JWTConfig
 import com.vocabutor.service.*
 import io.ktor.client.*
@@ -47,6 +44,7 @@ fun Application.configureRouting(
             cardRoutes(cardService)
             deckRoutes(deckService)
             questionSetRoutes(questionSetService)
+            scraperRoutes()
         }
         authenticate("auth-oauth-google") {
             get("/login") {
