@@ -18,7 +18,7 @@ import java.time.Clock
 val logger: Logger = LoggerFactory.getLogger("Routing")
 
 fun Application.configureRouting(
-    jwtConfig: JWTConfig, clock: Clock,
+    jwtConfig: JWTConfig, clock: Clock, googleClientId: String,
     httpClient: HttpClient = applicationHttpClient
 ) {
     val userRepository = UserRepository()
@@ -29,7 +29,7 @@ fun Application.configureRouting(
     val questionSetRepository = QuestionSetRepository()
     val questionRepository = QuestionRepository()
 
-    val googleAuthService = GoogleAuthService(userRepository, userGoogleAuthRepository, httpClient, jwtConfig, clock)
+    val googleAuthService = GoogleAuthService(googleClientId, userRepository, userGoogleAuthRepository, httpClient, jwtConfig, clock)
     val languageService = LanguageService(LanguageRepository())
     val cardService = CardService(cardRepository)
     val deckService = DeckService(deckRepository, cardRepository, cardDeckRelRepository)
@@ -39,6 +39,7 @@ fun Application.configureRouting(
         get("/") {
             call.respondText("Vocabutor API running!")
         }
+        openAuthRoutes(googleAuthService)
         authenticate(jwtConfig.name) {
             languageRoutes(languageService)
             cardRoutes(cardService)
