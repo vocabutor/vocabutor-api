@@ -65,6 +65,9 @@ class GoogleAuthService(
             throw InternalServerError("failed to verify auth from Google")
         }
         val tokenInfoResponse = response.body<TokenInfoResponse>()
+        if (tokenInfoResponse.azp != googleClientId) {
+            throw InternalServerError("failed to verify auth from google, invalid client")
+        }
         val userInfo = UserInfo(
             tokenInfoResponse.sub,
             tokenInfoResponse.name,
