@@ -54,7 +54,7 @@ class DeckService(
                 size,
                 deckDtos,
                 count,
-                decks.size == size && offset + size == count
+                decks.size == size && offset + size != count
             )
         }
 

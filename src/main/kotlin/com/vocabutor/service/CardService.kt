@@ -39,7 +39,7 @@ class CardService(private val cardRepository: CardRepository) {
             val count = countDeferred.await()
             val cards = cardsDeferred.await()
             val cardDtos = cards.map { it.toDto() }
-            PageDto(page, size, cardDtos, count, cards.size == size && offset + size == count)
+            PageDto(page, size, cardDtos, count, cards.size == size && offset + size != count)
         }
 
     suspend fun update(id: String, req: UpdateCardRequest, currentUsername: String, userId: Long): CardDto {
