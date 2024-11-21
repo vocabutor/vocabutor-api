@@ -13,6 +13,7 @@ import com.vocabutor.repository.CardRepository
 import com.vocabutor.repository.DeckRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import org.jetbrains.exposed.sql.SortOrder
 
 class DeckService(
     private val deckRepository: DeckRepository,
@@ -37,14 +38,21 @@ class DeckService(
             ?.toDto()
             ?: throw NotFoundError("deck with id $id not found")
 
-    suspend fun pageAll(userId: Long, search: String, page: Int, size: Int): PageDto<DeckDto> =
+    suspend fun pageAll(
+        userId: Long,
+        search: String,
+        page: Int,
+        size: Int,
+        deckSort: DeckRepository.DeckSort,
+        sortOrder: SortOrder
+    ): PageDto<DeckDto> =
         coroutineScope {
             val offset = page.toLong() * size
             val countDeferred = async {
                 deckRepository.countByUserIdAndSearchQuery(userId, search)
             }
             val decksDeferred = async {
-                deckRepository.pageByUserIdAndSearchQuery(userId, offset, size, search)
+                deckRepository.pageByUserIdAndSearchQuery(userId, offset, size, search, deckSort, sortOrder)
             }
             val count = countDeferred.await()
             val decks = decksDeferred.await()

@@ -4,11 +4,21 @@ import com.vocabutor.dto.request.AddDeckRequest
 import com.vocabutor.dto.request.UpdateDeckRequest
 import com.vocabutor.entity.*
 import com.vocabutor.repository.CardRepository.CardTable
+import com.vocabutor.repository.DeckRepository.DeckSort
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.javatime.timestamp
 import java.time.Clock
 import java.time.Instant
 import java.util.*
+
+fun String?.toDeckSort(): DeckSort? {
+    for (sort in DeckSort.entries) {
+        if (this == sort.name) {
+            return sort
+        }
+    }
+    return null
+}
 
 class DeckRepository {
 
@@ -25,6 +35,11 @@ class DeckRepository {
         val updatedBy = varchar("updated_by", length = 50)
 
         override val primaryKey = PrimaryKey(id)
+    }
+
+    enum class DeckSort(val col: Column<*>) {
+        UPDATED_AT(DeckTable.updatedAt),
+        CREATED_AT(DeckTable.createdAt),
     }
 
     suspend fun insert(req: AddDeckRequest, userId: Long, status: DeckStatus, currentUsername: String): String =
@@ -51,14 +66,14 @@ class DeckRepository {
 
     suspend fun findByIdWithCards(id: String): Deck? = dbTransaction {
         DeckTable.join(
-                CardDeckRelRepository.CardDeckRelTable,
-                JoinType.LEFT,
-                DeckTable.id,
-                CardDeckRelRepository.CardDeckRelTable.deckId
-            ).join(
-                CardTable, JoinType.LEFT, CardDeckRelRepository.CardDeckRelTable.cardId, CardTable.id,
-                additionalConstraint = { CardTable.status eq CardStatus.ACTIVE.name }
-            ).selectAll()
+            CardDeckRelRepository.CardDeckRelTable,
+            JoinType.LEFT,
+            DeckTable.id,
+            CardDeckRelRepository.CardDeckRelTable.deckId
+        ).join(
+            CardTable, JoinType.LEFT, CardDeckRelRepository.CardDeckRelTable.cardId, CardTable.id,
+            additionalConstraint = { CardTable.status eq CardStatus.ACTIVE.name }
+        ).selectAll()
             .where { DeckTable.id eq id and (DeckTable.status eq DeckStatus.ACTIVE.name) }
             .map {
                 val deck = rowMapper(it)
@@ -85,11 +100,19 @@ class DeckRepository {
         }
     }
 
-    suspend fun pageByUserIdAndSearchQuery(userId: Long, offset: Long, limit: Int, search: String): List<Deck> =
+    suspend fun pageByUserIdAndSearchQuery(
+        userId: Long,
+        offset: Long,
+        limit: Int,
+        search: String,
+        deckSort: DeckSort,
+        sortOrder: SortOrder
+    ): List<Deck> =
         dbTransaction {
             DeckTable.selectAll().where {
                 (DeckTable.userId eq userId) and ((DeckTable.title ilike '%' + search + '%')) and (DeckTable.status eq DeckStatus.ACTIVE.name)
-            }.limit(limit, offset = offset).map {
+            }.orderBy(deckSort.col to sortOrder)
+                .limit(limit, offset = offset).map {
                     rowMapper(it)
                 }
         }

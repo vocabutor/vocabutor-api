@@ -3,6 +3,9 @@ package com.vocabutor.routes
 import com.vocabutor.dto.request.AddDeckRequest
 import com.vocabutor.dto.request.UpdateDeckRequest
 import com.vocabutor.entity.DeckStatus
+import com.vocabutor.repository.DeckRepository
+import com.vocabutor.repository.toDeckSort
+import com.vocabutor.repository.toSortOrder
 import com.vocabutor.security.userId
 import com.vocabutor.security.username
 import com.vocabutor.service.DeckService
@@ -13,6 +16,7 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import org.jetbrains.exposed.sql.SortOrder
 
 fun Route.deckRoutes(deckService: DeckService) {
     route("/v1/decks") {
@@ -25,7 +29,12 @@ fun Route.deckRoutes(deckService: DeckService) {
                 call.respond(HttpStatusCode.Unauthorized, "No access token")
                 return@get
             }
-            call.respond(deckService.pageAll(userId, query, page, size))
+
+            val sort = call.request.queryParameters["sort"]?.toDeckSort()
+                ?: DeckRepository.DeckSort.UPDATED_AT
+            val order = call.request.queryParameters["order"]?.toSortOrder() ?: SortOrder.DESC_NULLS_LAST
+
+            call.respond(deckService.pageAll(userId, query, page, size, sort, order))
         }
 
         get("/{id}") {
