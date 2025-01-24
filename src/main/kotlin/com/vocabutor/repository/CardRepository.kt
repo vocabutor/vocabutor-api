@@ -3,6 +3,7 @@ package com.vocabutor.repository
 import com.vocabutor.dto.request.AddCardRequest
 import com.vocabutor.dto.request.UpdateCardRequest
 import com.vocabutor.entity.*
+import com.vocabutor.repository.CardDeckRelRepository.CardDeckRelTable
 import com.vocabutor.repository.CardRepository.CardTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.javatime.timestamp
@@ -143,18 +144,40 @@ class CardRepository {
         }
     }
 
-    suspend fun pageByUserIdAndSearchQuery(userId: Long, offset: Long, limit: Int, search: String): List<Card> =
+    suspend fun pageByUserIdAndSearchQueryAndExcludeCardId(userId: Long, offset: Long, limit: Int, search: String, excludeDeckId: String?): List<Card> =
         dbTransaction {
             CardTable.selectAll().where {
-                (CardTable.userId eq userId) and ((CardTable.phrase ilike '%' + search + '%') or (CardTable.answer ilike '%' + search + '%')) and (CardTable.status eq CardStatus.ACTIVE.name)
+                (CardTable.userId eq userId) and (
+                        (CardTable.phrase ilike '%' + search + '%') or (CardTable.answer ilike '%' + search + '%')
+                        ) and (CardTable.status eq CardStatus.ACTIVE.name) and (excludeDeckId?.let {
+                    notExists(
+                        CardDeckRelTable.selectAll().where {
+                            (CardDeckRelTable.cardId eq CardTable.id) and
+                                    (CardDeckRelTable.deckId eq it)
+                        }
+                    )
+                } ?: Op.TRUE)
             }.limit(limit, offset = offset).map {
                     cardRowMapper(it)
                 }
         }
 
-    suspend fun countByUserIdAndSearchQuery(userId: Long, search: String): Long = dbTransaction {
+
+
+    suspend fun countByUserIdAndSearchQueryAndExcludeCardId(
+            userId: Long, search: String, excludeDeckId: String?): Long = dbTransaction {
+
         CardTable.selectAll().where {
-            (CardTable.userId eq userId) and ((CardTable.phrase ilike '%' + search + '%') or (CardTable.answer ilike '%' + search + '%')) and (CardTable.status eq CardStatus.ACTIVE.name)
+            (CardTable.userId eq userId) and (
+                    (CardTable.phrase ilike '%' + search + '%') or (CardTable.answer ilike '%' + search + '%')
+            ) and (CardTable.status eq CardStatus.ACTIVE.name) and (excludeDeckId?.let {
+                notExists(
+                    CardDeckRelTable.selectAll().where {
+                        (CardDeckRelTable.cardId eq CardTable.id) and
+                                (CardDeckRelTable.deckId eq it)
+                    }
+                )
+            } ?: Op.TRUE)
         }.count()
     }
 

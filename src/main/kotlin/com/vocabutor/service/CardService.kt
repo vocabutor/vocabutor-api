@@ -27,14 +27,14 @@ class CardService(private val cardRepository: CardRepository) {
             ?.toDto()
             ?: throw NotFoundError("card with id $id not found")
 
-    suspend fun pageAll(userId: Long, search: String, page: Int, size: Int): PageDto<CardDto> =
+    suspend fun pageAll(userId: Long, search: String, excludeDeckId: String?, page: Int, size: Int): PageDto<CardDto> =
         coroutineScope {
             val offset = page.toLong() * size
             val countDeferred = async {
-                cardRepository.countByUserIdAndSearchQuery(userId, search)
+                cardRepository.countByUserIdAndSearchQueryAndExcludeCardId(userId, search, excludeDeckId)
             }
             val cardsDeferred = async {
-                cardRepository.pageByUserIdAndSearchQuery(userId, offset, size, search)
+                cardRepository.pageByUserIdAndSearchQueryAndExcludeCardId(userId, offset, size, search, excludeDeckId)
             }
             val count = countDeferred.await()
             val cards = cardsDeferred.await()

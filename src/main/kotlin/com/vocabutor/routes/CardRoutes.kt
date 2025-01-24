@@ -20,12 +20,13 @@ fun Route.cardRoutes(cardService: CardService) {
             val page = call.request.queryParameters["page"]?.toInt() ?: 0
             val size = call.request.queryParameters["size"]?.toInt() ?: 10
             val query = call.request.queryParameters["q"] ?: ""
+            val excludeDeckId = call.request.queryParameters["excludeDeckId"]
 
             val userId = call.principal<JWTPrincipal>()?.userId() ?: run {
                 call.respond(HttpStatusCode.Unauthorized, "No access token")
                 return@get
             }
-            call.respond(cardService.pageAll(userId, query, page, size))
+            call.respond(cardService.pageAll(userId, query, excludeDeckId, page, size))
         }
 
         get("/{id}") {
